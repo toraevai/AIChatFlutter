@@ -60,6 +60,15 @@ class DatabaseService {
             model_id TEXT,
             tokens INTEGER,
             cost REAL
+          );
+
+          CREATE TABLE auth_data (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            api_key TEXT NOT NULL,
+            pin TEXT NOT NULL,
+            provider TEXT NOT NULL,
+            balance REAL,
+            last_updated TEXT
           )
         ''');
       },
@@ -125,6 +134,78 @@ class DatabaseService {
       await db.delete('messages'); // Удаление всех записей из таблицы
     } catch (e) {
       debugPrint('Error clearing history: $e'); // Логирование ошибок
+    }
+  }
+
+  // Метод сохранения авторизационных данных
+  Future<void> saveAuthData(
+      String apiKey, String pin, String provider, double balance) async {
+    try {
+      final db = await database;
+      // Очищаем старые данные перед сохранением новых
+      await db.delete('auth_data');
+      // Вставляем новые данные
+      await db.insert(
+        'auth_data',
+        {
+          'api_key': apiKey,
+          'pin': pin,
+          'provider': provider,
+          'balance': balance,
+          'last_updated': DateTime.now().toIso8601String(),
+        },
+      );
+    } catch (e) {
+      debugPrint('Error saving auth data: $e');
+    }
+  }
+
+  // Метод получения сохраненных авторизационных данных
+  Future<Map<String, dynamic>?> getAuthData() async {
+    try {
+      final db = await database;
+      final result = await db.query(
+        'auth_data',
+        limit: 1,
+      );
+      if (result.isEmpty) return null;
+      return {
+        'api_key': result[0]['api_key'] as String,
+        'pin': result[0]['pin'] as String,
+        'provider': result[0]['provider'] as String,
+        'balance': result[0]['balance'] as double?,
+        'last_updated': result[0]['last_updated'] as String?,
+      };
+    } catch (e) {
+      debugPrint('Error getting auth data: $e');
+      return null;
+    }
+  }
+
+  // Метод проверки PIN
+  Future<bool> checkPin(String pin) async {
+    try {
+      final db = await database;
+      final result = await db.query(
+        'auth_data',
+        where: 'pin = ?',
+        whereArgs: [pin],
+        limit: 1,
+      );
+      return result.isNotEmpty;
+    } catch (e) {
+      debugPrint('Error checking PIN: $e');
+      return false;
+    }
+  }
+
+  // Метод очистки авторизационных данных
+  Future<void> clearAuthData() async {
+    try {
+      final db = await database;
+      await db.delete('auth_data');
+    } catch (e) {
+      debugPrint('Error clearing auth data: $e');
     }
   }
 

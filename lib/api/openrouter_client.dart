@@ -10,9 +10,9 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 // Класс клиента для работы с API OpenRouter
 class OpenRouterClient {
   // API ключ для авторизации
-  final String? apiKey;
+  String? apiKey;
   // Базовый URL API
-  final String? baseUrl;
+  String? baseUrl;
   // Заголовки HTTP запросов
   final Map<String, String> headers;
 
@@ -26,21 +26,48 @@ class OpenRouterClient {
 
   // Приватный конструктор для реализации Singleton
   OpenRouterClient._internal()
-      : apiKey =
-            dotenv.env['OPENROUTER_API_KEY'], // Получение API ключа из .env
-        baseUrl = dotenv.env['BASE_URL'], // Получение базового URL из .env
+      : apiKey = dotenv.env['OPENROUTER_API_KEY'],
+        baseUrl = dotenv.env['BASE_URL'],
         headers = {
-          'Authorization':
-              'Bearer ${dotenv.env['OPENROUTER_API_KEY']}', // Заголовок авторизации
-          'Content-Type': 'application/json', // Указание типа контента
-          'X-Title': 'AI Chat Flutter', // Название приложения
+          'Content-Type': 'application/json',
+          'X-Title': 'AI Chat Flutter',
         } {
-    // Инициализация клиента
+    if (apiKey != null) {
+      headers['Authorization'] = 'Bearer $apiKey';
+    }
+    _initializeClient();
+  }
+
+  // Метод определения провайдера и URL по ключу
+  static Map<String, String> detectProvider(String apiKey) {
+    if (apiKey.startsWith('sk-or-vv-')) {
+      return {'provider': 'VSEGPT', 'baseUrl': 'https://api.vsegpt.ru/v1'};
+    } else if (apiKey.startsWith('sk-or-v1-')) {
+      return {
+        'provider': 'OpenRouter',
+        'baseUrl': 'https://openrouter.ai/api/v1'
+      };
+    }
+    throw Exception('Invalid API key format');
+  }
+
+  // Метод обновления API ключа и URL
+  void updateApiKey(String newApiKey) {
+    final providerInfo = detectProvider(newApiKey);
+    apiKey = newApiKey;
+    baseUrl = providerInfo['baseUrl'];
+    headers['Authorization'] = 'Bearer $newApiKey';
+    if (kDebugMode) {
+      print('Updated API key to: $newApiKey');
+      print('Using base URL: $baseUrl');
+    }
     _initializeClient();
   }
 
   // Метод инициализации клиента
   void _initializeClient() {
+    // Если ключ не установлен, пропускаем проверки
+    if (apiKey == null || apiKey!.isEmpty) return;
     try {
       if (kDebugMode) {
         print('Initializing OpenRouterClient...');
@@ -186,11 +213,14 @@ class OpenRouterClient {
   // Метод получения текущего баланса
   Future<String> getBalance() async {
     try {
-      // Выполнение GET запроса для получения баланса
+      // Для VSEGPT пропускаем проверку баланса, если она отключена
+      if (baseUrl?.contains('vsegpt.ru') == true) {
+        return 'Баланс не проверен';
+      }
+
+      // Для OpenRouter выполняем обычную проверку
       final response = await http.get(
-        Uri.parse(baseUrl?.contains('vsegpt.ru') == true
-            ? '$baseUrl/balance'
-            : '$baseUrl/credits'),
+        Uri.parse('$baseUrl/credits'),
         headers: headers,
       );
 
@@ -200,25 +230,14 @@ class OpenRouterClient {
       }
 
       if (response.statusCode == 200) {
-        // Парсинг данных о балансе
         final data = json.decode(response.body);
         if (data != null && data['data'] != null) {
-          if (baseUrl?.contains('vsegpt.ru') == true) {
-            final credits =
-                double.tryParse(data['data']['credits'].toString()) ??
-                    0.0; // Доступно средств
-            return '${credits.toStringAsFixed(2)}₽'; // Расчет доступного баланса
-          } else {
-            final credits = data['data']['total_credits'] ?? 0; // Общие кредиты
-            final usage =
-                data['data']['total_usage'] ?? 0; // Использованные кредиты
-            return '\$${(credits - usage).toStringAsFixed(2)}'; // Расчет доступного баланса
-          }
+          final credits = data['data']['total_credits'] ?? 0;
+          final usage = data['data']['total_usage'] ?? 0;
+          return '\$${(credits - usage).toStringAsFixed(2)}';
         }
       }
-      return baseUrl?.contains('vsegpt.ru') == true
-          ? '0.00₽'
-          : '\$0.00'; // Возвращение нулевого баланса по умолчанию
+      return '\$0.00';
     } catch (e) {
       if (kDebugMode) {
         print('Error getting balance: $e');

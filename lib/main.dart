@@ -8,8 +8,9 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:provider/provider.dart';
 // Импорт кастомного провайдера для управления состоянием чата
 import 'providers/chat_provider.dart';
-// Импорт основного экрана чата
+// Импорт экранов приложения
 import 'screens/chat_screen.dart';
+import 'screens/auth_screen.dart';
 
 // Виджет для обработки и отлова ошибок в приложении
 class ErrorBoundaryWidget extends StatelessWidget {
@@ -233,8 +234,13 @@ class MyApp extends StatelessWidget {
             ),
           ),
         ),
-        // Основной экран приложения
-        home: const ChatScreen(),
+        // Начальный маршрут
+        initialRoute: '/',
+        // Маршруты приложения
+        routes: {
+          '/': (context) => const AuthScreen(),
+          '/chat': (context) => const ChatScreen(),
+        },
       ),
     );
   }
