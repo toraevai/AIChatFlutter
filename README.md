@@ -4,7 +4,7 @@ AIChatFlutter - это мультиплатформенное приложени
 
 Данный вариант приложения доработан с использованием Cline. Добавлен экран авторизации. Оригинальный репозиторй - [neuro-fill/AIChatFlutter](https://github.com/neuro-fill/AIChatFlutter).  
 
-Экран авторизации:
-<img src="aurh_screen.png" alt="drawing" width="4000"/>  
-Главный экран:
-<img src="main_screen.png" alt="drawing" width="4000"/>
+Экран авторизации:  
+<img src="auth_screen.png" alt="drawing" width="300"/>  
+Главный экран:  
+<img src="main_screen.png" alt="drawing" width="300"/>
